@@ -152,6 +152,37 @@ runner = Runner(agent=host, app_name="...", session_service=InMemorySessionServi
 
 ---
 
+## VERIFIED in-process round-trip (no API key, no real port)
+
+This exact pattern was run and passes — use it for tests and as the canonical client usage.
+Note: `A2AStarletteApplication` requires the `http-server` extra (`a2a-sdk[http-server]`,
+which pulls `sse-starlette`). Client `send_message` yields **tuples** `(Task, update_event)`.
+
+```python
+import httpx
+from a2a.server.apps import A2AStarletteApplication
+from a2a.server.request_handlers import DefaultRequestHandler
+from a2a.server.tasks import InMemoryTaskStore
+from a2a.client import A2ACardResolver, ClientFactory, ClientConfig
+from a2a.types import Message, Role, Part, TextPart
+
+asgi = A2AStarletteApplication(card, DefaultRequestHandler(
+    agent_executor=MyExecutor(), task_store=InMemoryTaskStore())).build()
+
+async with httpx.AsyncClient(transport=httpx.ASGITransport(app=asgi),
+                             base_url="http://test") as client:
+    # card is auto-served:
+    r = await client.get("/.well-known/agent-card.json")        # -> 200
+    fetched = await A2ACardResolver(client, base_url="http://test").get_agent_card()
+    c = ClientFactory(ClientConfig(httpx_client=client, streaming=True)).create(fetched)
+    msg = Message(role=Role.user, message_id="m1",
+                  parts=[Part(root=TextPart(text="hello A2A"))])
+    async for event in c.send_message(msg):     # events are tuples: (Task, update|None)
+        task = event[0] if isinstance(event, tuple) else event
+        if getattr(task, "artifacts", None):
+            data = task.artifacts[0].parts[0].root.data     # DataPart payload round-trips
+```
+
 ## Confirmed import smoke test (passes on this machine)
 
 ```python

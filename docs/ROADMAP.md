@@ -30,9 +30,9 @@ Small, high-value, mostly no new concepts. Do these before adding features.
   path surfaces (esp. how `RemoteA2aAgent` returns artifacts to the host LLM — flagged
   in `ARCHITECTURE.md §10`). Commit a real transcript to the README.
   _Verify: a real report prints; README transcript matches actual output._
-- [ ] **1.2 Integration-test the host** behind a stubbed/fake model so the
-  orchestration logic is covered without a key (or mark it `@pytest.mark.live` and
-  gate on `GOOGLE_API_KEY`). _Verify: a host test runs in CI._
+- [x] **1.2 Integration-test the host** behind a stubbed/fake model so the
+  orchestration logic is covered without a key. _Done: `tests/test_host_orchestrator.py`
+  drives `stream_query` with a fake `BaseLlm` (no network) and unit-tests `_event_text`._
 - [ ] **1.3 Connection-failure UX.** When a specialist is down, the host/CLI should
   fail with the clear "start the specialists first" message (already drafted in
   `cli.py`) — add a test that asserts it. _Verify: test passes with servers down._

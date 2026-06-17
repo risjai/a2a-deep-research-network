@@ -11,3 +11,16 @@ dependencies = [
     "httpx>=0.28.1",
     "uvicorn>=0.49.0",
 ]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.0",
+    "pytest-asyncio>=1.4.0",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+# Test names read as specifications ("it does X"); collect them alongside the
+# usual test_* convention.
+python_functions = ["test_*", "it_*"]
+python_classes = ["Test*"]

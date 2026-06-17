@@ -112,6 +112,7 @@ a2a_research/
 tests/                   # CI-safe pytest suite (no API key)
 docs/
 ├── ARCHITECTURE.md      # implementation blueprint
+├── ROADMAP.md           # where the project is and where it could go
 └── VERIFIED_API.md      # exact, introspected a2a-sdk / ADK API used here
 ```
 

@@ -15,7 +15,7 @@ from a2a.types import (
 )
 
 from .. import config, gemini
-from ..executor_base import ResearchExecutor
+from ..executor_base import ProgressFn, ResearchExecutor
 
 _PROMPT = (
     "You are a research analyst. From the material below, produce a concise "
@@ -30,7 +30,10 @@ class AnalystExecutor(ResearchExecutor):
 
     artifact_name = "brief"
 
-    async def run(self, user_input: str, context: RequestContext) -> list[Part]:
+    async def run(
+        self, user_input: str, context: RequestContext, progress: ProgressFn
+    ) -> list[Part]:
+        await progress("Synthesizing a brief from the provided material...")
         prompt = _PROMPT.format(material=user_input)
         brief = await gemini.generate(prompt, stub_label="analysis")
         return [Part(root=TextPart(text=brief))]

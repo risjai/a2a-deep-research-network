@@ -41,9 +41,10 @@ Small, high-value, mostly no new concepts. Do these before adding features.
 
 A2A's task model is built for incremental updates; right now everything is one-shot.
 
-- [ ] **2.1 Stream the Retriever:** flip `streaming=True` and emit a
-  `working` status update per source as it resolves (`TaskUpdater.update_status`),
-  then the final artifact. _Verify: client sees multiple status events before completion._
+- [x] **2.1 Stream the Retriever:** flipped `streaming=True`; the base executor now
+  hands `run()` a request-scoped `progress()` callback that emits `working` status
+  updates (searching → found pages → retrieved) before the final artifact. _Done:
+  visible in the demo; asserted by `test_retriever.py::it_streams_interim_working_updates`._
 - [ ] **2.2 Stream the Analyst/Critic** token-by-token using Gemini's streaming API,
   forwarding chunks as artifact appends (`add_artifact(..., append=True)`).
   _Verify: partial text arrives incrementally over A2A._

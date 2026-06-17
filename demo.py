@@ -52,6 +52,16 @@ async def _query_retriever(client: httpx.AsyncClient, topic: str) -> dict:
     data: dict = {}
     async for event in a2a_client.send_message(message):
         task = event[0] if isinstance(event, tuple) else event
+        update = event[1] if isinstance(event, tuple) and len(event) > 1 else None
+        # Print interim `working` status notes as the Retriever streams them.
+        status = getattr(update, "status", None)
+        status_msg = getattr(status, "message", None)
+        if status_msg and status_msg.parts:
+            note = "".join(
+                p.root.text for p in status_msg.parts if getattr(p.root, "text", None)
+            )
+            if note:
+                print(f"  … {note}")
         if getattr(task, "artifacts", None):
             data = task.artifacts[0].parts[0].root.data
     return data

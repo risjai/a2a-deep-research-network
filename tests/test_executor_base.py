@@ -11,7 +11,7 @@ exception message when ``run()`` raises.
 from a2a.server.agent_execution import RequestContext
 from a2a.types import DataPart, Part, TaskState, TextPart
 
-from a2a_research.executor_base import ResearchExecutor
+from a2a_research.executor_base import ProgressFn, ResearchExecutor
 
 
 def _trivial_card():
@@ -37,7 +37,9 @@ class _EchoExecutor(ResearchExecutor):
 
     artifact_name = "echo"
 
-    async def run(self, user_input: str, context: RequestContext) -> list[Part]:
+    async def run(
+        self, user_input: str, context: RequestContext, progress: ProgressFn
+    ) -> list[Part]:
         return [Part(root=TextPart(text=f"echo:{user_input}"))]
 
 
@@ -46,14 +48,18 @@ class _DataExecutor(ResearchExecutor):
 
     artifact_name = "payload"
 
-    async def run(self, user_input: str, context: RequestContext) -> list[Part]:
+    async def run(
+        self, user_input: str, context: RequestContext, progress: ProgressFn
+    ) -> list[Part]:
         return [Part(root=DataPart(data={"received": user_input}))]
 
 
 class _BoomExecutor(ResearchExecutor):
     """run() always raises, so the base must mark the task failed."""
 
-    async def run(self, user_input: str, context: RequestContext) -> list[Part]:
+    async def run(
+        self, user_input: str, context: RequestContext, progress: ProgressFn
+    ) -> list[Part]:
         raise ValueError("intentional boom")
 
 

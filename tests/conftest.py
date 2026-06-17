@@ -69,6 +69,48 @@ def a2a_roundtrip():
 
 
 @pytest.fixture
+def a2a_progress_notes():
+    """Like a2a_roundtrip, but captures interim status-message text as it streams.
+
+    The ``Task`` carried by each event reflects only the *latest* status, so a
+    streamed "working" note must be read at receive time, not from the final
+    accumulated task. Returns the list of non-empty status-message strings in
+    arrival order — used to assert that streaming actually happened.
+    """
+
+    async def _run(card: AgentCard, executor: AgentExecutor, text: str) -> list[str]:
+        asgi = build_asgi_app(card, executor)
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=asgi), base_url=_BASE_URL
+        ) as client:
+            fetched = await A2ACardResolver(
+                client, base_url=_BASE_URL
+            ).get_agent_card()
+            a2a_client = ClientFactory(
+                ClientConfig(httpx_client=client, streaming=True)
+            ).create(fetched)
+            message = Message(
+                role=Role.user,
+                message_id="test-message-1",
+                parts=[Part(root=TextPart(text=text))],
+            )
+            notes: list[str] = []
+            async for event in a2a_client.send_message(message):
+                update = event[1] if isinstance(event, tuple) and len(event) > 1 else None
+                status = getattr(update, "status", None)
+                msg = getattr(status, "message", None)
+                if msg and msg.parts:
+                    note = "".join(
+                        p.root.text for p in msg.parts if getattr(p.root, "text", None)
+                    )
+                    if note:
+                        notes.append(note)
+            return notes
+
+    return _run
+
+
+@pytest.fixture
 def asgi_client():
     """Return an async helper yielding an httpx client bound to a card+executor app.
 

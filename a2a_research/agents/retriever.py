@@ -7,6 +7,7 @@ structured ``DataPart``.
 """
 
 import asyncio
+from collections.abc import Awaitable, Callable
 from urllib.parse import quote
 
 import httpx
@@ -21,7 +22,7 @@ from a2a.types import (
 )
 
 from .. import config
-from ..executor_base import ResearchExecutor
+from ..executor_base import ProgressFn, ResearchExecutor
 
 _SEARCH_URL = "https://en.wikipedia.org/w/api.php"
 _SUMMARY_URL = "https://en.wikipedia.org/api/rest_v1/page/summary/{title}"
@@ -29,9 +30,14 @@ _HEADERS = {"User-Agent": "a2a-research/0.1 (demo)"}
 _TOP_N = 3
 
 
-async def fetch_sources(topic: str) -> list[dict]:
+async def fetch_sources(
+    topic: str,
+    on_titles: Callable[[list[str]], Awaitable[None]] | None = None,
+) -> list[dict]:
     """Search Wikipedia for ``topic`` and return up to 3 summarized sources.
 
+    If ``on_titles`` is given it is awaited once with the matched titles, before
+    the summaries are fetched — the Retriever uses this to stream progress.
     Returns an empty list if there are no search hits (a valid empty result,
     not an error). Raises on network/HTTP failure.
     """
@@ -50,6 +56,8 @@ async def fetch_sources(topic: str) -> list[dict]:
         titles = [hit["title"] for hit in hits[:_TOP_N]]
         if not titles:
             return []
+        if on_titles is not None:
+            await on_titles(titles)
 
         # Fetch summaries concurrently; one title failing (e.g. a 404 on a
         # redirect) shouldn't sink the whole retrieval, so drop failures.
@@ -78,8 +86,16 @@ class RetrieverExecutor(ResearchExecutor):
 
     artifact_name = "wikipedia_sources"
 
-    async def run(self, user_input: str, context: RequestContext) -> list[Part]:
-        sources = await fetch_sources(user_input)
+    async def run(
+        self, user_input: str, context: RequestContext, progress: ProgressFn
+    ) -> list[Part]:
+        await progress(f"Searching Wikipedia for '{user_input}'...")
+
+        async def _announce(titles: list[str]) -> None:
+            await progress(f"Found {len(titles)} pages: {', '.join(titles)}. Fetching summaries...")
+
+        sources = await fetch_sources(user_input, on_titles=_announce)
+        await progress(f"Retrieved {len(sources)} sources.")
         return [
             Part(
                 root=DataPart(
@@ -100,7 +116,7 @@ def build_card() -> AgentCard:
         description="Gathers source material on a topic from Wikipedia.",
         url=config.base_url("retriever") + "/",
         version="0.1.0",
-        capabilities=AgentCapabilities(streaming=False),
+        capabilities=AgentCapabilities(streaming=True),
         default_input_modes=["text/plain"],
         default_output_modes=["application/json"],
         skills=[

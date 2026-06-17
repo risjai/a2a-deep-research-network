@@ -124,7 +124,9 @@ class TestFetchSources:
 class TestRetrieverExecutorRoundTrip:
     @pytest.fixture(autouse=True)
     def _stub_fetch(self, monkeypatch):
-        async def _fake_fetch(topic):
+        async def _fake_fetch(topic, on_titles=None):
+            if on_titles is not None:
+                await on_titles(["Quantum computing", "Qubit"])
             return [
                 {"title": "Quantum computing", "extract": "qc", "url": "http://q"},
                 {"title": "Qubit", "extract": "a qubit", "url": "http://qb"},
@@ -154,3 +156,15 @@ class TestRetrieverExecutorRoundTrip:
         )
 
         assert tasks[-1].artifacts[0].name == "wikipedia_sources"
+
+    async def it_streams_interim_working_updates(self, a2a_progress_notes):
+        # The Retriever declares streaming=True and should emit several `working`
+        # status notes (search -> found pages -> retrieved) as it goes. These are
+        # captured at receive time, since the final Task only holds the last status.
+        notes = await a2a_progress_notes(
+            retriever.CARD, retriever.RetrieverExecutor(), "quantum computing"
+        )
+
+        assert any("Searching Wikipedia" in n for n in notes), notes
+        assert any("Found 2 pages" in n for n in notes), notes
+        assert any("Retrieved" in n for n in notes), notes

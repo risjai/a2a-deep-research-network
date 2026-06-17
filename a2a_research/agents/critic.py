@@ -15,7 +15,7 @@ from a2a.types import (
 )
 
 from .. import config, gemini
-from ..executor_base import ResearchExecutor
+from ..executor_base import ProgressFn, ResearchExecutor
 
 _PROMPT = (
     "You are a research critic. Review the brief below and list its gaps, "
@@ -29,7 +29,10 @@ class CriticExecutor(ResearchExecutor):
 
     artifact_name = "critique"
 
-    async def run(self, user_input: str, context: RequestContext) -> list[Part]:
+    async def run(
+        self, user_input: str, context: RequestContext, progress: ProgressFn
+    ) -> list[Part]:
+        await progress("Reviewing the brief for gaps and weak claims...")
         prompt = _PROMPT.format(material=user_input)
         critique = await gemini.generate(prompt, stub_label="critique")
         return [Part(root=TextPart(text=critique))]

@@ -35,6 +35,7 @@ as agents from different teams or vendors would interoperate in the real world.
 | **A2A server** | `A2AStarletteApplication` + `AgentExecutor` per specialist (`server.py`, `executor_base.py`) |
 | **A2A client / delegation** | ADK `RemoteA2aAgent` wired as **sub-agents** of the host (`host/orchestrator.py`) |
 | **Task lifecycle** | `submit → start_work → add_artifact → complete` / `failed` (`executor_base.py`) |
+| **Streaming updates** | Retriever streams interim `working` status notes before the artifact (`executor_base.py` `progress` callback) |
 | **Structured artifacts** | Retriever returns a `DataPart`; Analyst/Critic return `TextPart` |
 | **Framework interop** | The host (ADK) orchestrates agents that are plain `a2a-sdk` servers — no shared code |
 
@@ -59,6 +60,9 @@ Starting 3 A2A specialist servers...
 
 Asking the Retriever (over A2A): "the history of jazz"
 
+  … Searching Wikipedia for 'the history of jazz'...
+  … Found 3 pages: Jazz, Jazz fusion, Acid jazz. Fetching summaries...
+  … Retrieved 3 sources.
 Topic: the history of jazz
 Sources found: 3
 1. Jazz
@@ -66,6 +70,9 @@ Sources found: 3
    Jazz is a music genre that originated in the African-American communities of New Orleans…
 ...
 ```
+
+The `…` lines are **streamed `working` status updates** the Retriever emits over A2A
+as it makes progress — the client sees them live, before the final artifact arrives.
 
 Run the test suite (also no key needed):
 

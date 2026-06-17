@@ -1,0 +1,115 @@
+"""Retriever specialist: gathers source material from Wikipedia.
+
+This is the CI-safe agent: it uses NO LLM and needs no API key, so it fully
+exercises the A2A protocol layer (task lifecycle + structured artifact) on its
+own. It searches Wikipedia for a topic and returns the top summaries as a
+structured ``DataPart``.
+"""
+
+import asyncio
+
+import httpx
+
+from a2a.server.agent_execution import RequestContext
+from a2a.types import (
+    AgentCapabilities,
+    AgentCard,
+    AgentSkill,
+    DataPart,
+    Part,
+)
+
+from .. import config
+from ..executor_base import ResearchExecutor
+
+_SEARCH_URL = "https://en.wikipedia.org/w/api.php"
+_SUMMARY_URL = "https://en.wikipedia.org/api/rest_v1/page/summary/{title}"
+_HEADERS = {"User-Agent": "a2a-research/0.1 (demo)"}
+_TOP_N = 3
+
+
+async def fetch_sources(topic: str) -> list[dict]:
+    """Search Wikipedia for ``topic`` and return up to 3 summarized sources.
+
+    Returns an empty list if there are no search hits (a valid empty result,
+    not an error). Raises on network/HTTP failure.
+    """
+    async with httpx.AsyncClient(headers=_HEADERS, timeout=30.0) as client:
+        search = await client.get(
+            _SEARCH_URL,
+            params={
+                "action": "query",
+                "list": "search",
+                "srsearch": topic,
+                "format": "json",
+            },
+        )
+        search.raise_for_status()
+        hits = search.json().get("query", {}).get("search", [])
+        titles = [hit["title"] for hit in hits[:_TOP_N]]
+        if not titles:
+            return []
+
+        summaries = await asyncio.gather(
+            *(_fetch_summary(client, title) for title in titles)
+        )
+        return summaries
+
+
+async def _fetch_summary(client: httpx.AsyncClient, title: str) -> dict:
+    """Fetch one page summary, guarding missing keys."""
+    resp = await client.get(_SUMMARY_URL.format(title=title))
+    resp.raise_for_status()
+    data = resp.json()
+    url = data.get("content_urls", {}).get("desktop", {}).get("page", "")
+    return {
+        "title": data.get("title", title),
+        "extract": data.get("extract", ""),
+        "url": url,
+    }
+
+
+class RetrieverExecutor(ResearchExecutor):
+    """Returns Wikipedia sources for a topic as a structured DataPart."""
+
+    artifact_name = "wikipedia_sources"
+
+    async def run(self, user_input: str, context: RequestContext) -> list[Part]:
+        sources = await fetch_sources(user_input)
+        return [
+            Part(
+                root=DataPart(
+                    data={
+                        "topic": user_input,
+                        "sources": sources,
+                        "source_count": len(sources),
+                    }
+                )
+            )
+        ]
+
+
+def build_card() -> AgentCard:
+    """The Retriever's Agent Card (served at /.well-known/agent-card.json)."""
+    return AgentCard(
+        name="retriever",
+        description="Gathers source material on a topic from Wikipedia.",
+        url=config.base_url("retriever") + "/",
+        version="0.1.0",
+        capabilities=AgentCapabilities(streaming=False),
+        default_input_modes=["text/plain"],
+        default_output_modes=["application/json"],
+        skills=[
+            AgentSkill(
+                id="wikipedia_lookup",
+                name="Wikipedia lookup",
+                description="Search Wikipedia and return summaries for a topic.",
+                tags=["research", "wikipedia"],
+                examples=["quantum computing", "the French Revolution"],
+            )
+        ],
+    )
+
+
+CARD = build_card()
+EXECUTOR = RetrieverExecutor()

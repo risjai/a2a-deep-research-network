@@ -4,7 +4,7 @@
 > introspecting the *installed* packages — not from memory or web tutorials (which
 > are mostly written against the older pre-0.3 API). Code against THIS file.
 >
-> Pinned versions: `a2a-sdk==0.3.26`, `google-adk==2.2.0`, Python 3.13.
+> Pinned versions: `a2a-sdk==0.3.26`, `google-adk==2.2.0`, Python `>=3.10`.
 
 ## Why these exact versions
 

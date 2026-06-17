@@ -53,6 +53,10 @@ a2a/
 
 Tests live in top-level `tests/` (pytest default discovery; no key required for the CI-relevant ones).
 
+> Note: this is the pre-build blueprint. The shipped test layout folded the planned
+> `test_analyst_critic.py` / `test_e2e_protocol.py` coverage into `test_executor_base.py`,
+> `test_gemini_stub.py`, and `test_retriever.py` (all via the in-process A2A round-trip).
+
 ---
 
 ## 2. Shared executor base — `a2a_research/executor_base.py`

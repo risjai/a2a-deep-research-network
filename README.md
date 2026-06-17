@@ -1,5 +1,7 @@
 # A2A Deep Research Network
 
+[![tests](https://github.com/risjai/a2a-deep-research-network/actions/workflows/ci.yml/badge.svg)](https://github.com/risjai/a2a-deep-research-network/actions/workflows/ci.yml)
+
 A multi-agent **Deep Research Network** that demonstrates Google's
 [**Agent2Agent (A2A) protocol**](https://a2a-protocol.org) end to end. A host
 orchestrator built with the **Google Agent Development Kit (ADK)** discovers three
@@ -88,9 +90,10 @@ uv run python -m a2a_research serve critic         # :8003
 uv run python -m a2a_research run "How does CRISPR gene editing work?"
 ```
 
-The host decomposes the question, transfers to the Retriever (sources) → Analyst
-(brief) → Critic (gaps), and composes a final report — streaming each agent's
-contribution as it arrives.
+The host is designed to decompose the question, transfer to the Retriever (sources) →
+Analyst (brief) → Critic (gaps), and compose a final report, streaming each agent's
+contribution as it arrives. (The no-key Retriever path is verified end to end by the
+demo and tests; the full LLM-driven orchestration requires a Gemini key to exercise.)
 
 ## Project layout
 

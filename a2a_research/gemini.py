@@ -25,7 +25,8 @@ async def generate(prompt: str, *, stub_label: str) -> str:
 
     client = genai.Client()  # reads GOOGLE_API_KEY/GEMINI_API_KEY from env
     resp = await client.aio.models.generate_content(model=MODEL, contents=prompt)
-    return resp.text
+    # .text is None when the response carries no text part (e.g. safety block).
+    return resp.text or ""
 
 
 def _stub(prompt: str, label: str) -> str:

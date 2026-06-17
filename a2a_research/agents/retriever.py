@@ -7,6 +7,7 @@ structured ``DataPart``.
 """
 
 import asyncio
+from urllib.parse import quote
 
 import httpx
 
@@ -50,15 +51,18 @@ async def fetch_sources(topic: str) -> list[dict]:
         if not titles:
             return []
 
-        summaries = await asyncio.gather(
-            *(_fetch_summary(client, title) for title in titles)
+        # Fetch summaries concurrently; one title failing (e.g. a 404 on a
+        # redirect) shouldn't sink the whole retrieval, so drop failures.
+        results = await asyncio.gather(
+            *(_fetch_summary(client, title) for title in titles),
+            return_exceptions=True,
         )
-        return summaries
+        return [r for r in results if isinstance(r, dict)]
 
 
 async def _fetch_summary(client: httpx.AsyncClient, title: str) -> dict:
     """Fetch one page summary, guarding missing keys."""
-    resp = await client.get(_SUMMARY_URL.format(title=title))
+    resp = await client.get(_SUMMARY_URL.format(title=quote(title, safe="")))
     resp.raise_for_status()
     data = resp.json()
     url = data.get("content_urls", {}).get("desktop", {}).get("page", "")
